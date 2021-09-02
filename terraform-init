@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+terraform init \
+    -reconfigure \
+    -backend-config="bucket=$TF_VAR_backend_bucket" \
+    -backend-config="key=$TF_VAR_backend_key"
