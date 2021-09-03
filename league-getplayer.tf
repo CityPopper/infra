@@ -32,6 +32,12 @@ resource "aws_lambda_function" "getLeaguePlayer" {
   runtime = "python3.9"
   handler = "main.lambda_handler"
   role    = aws_iam_role.lambda-riot-league-api-key-reader.arn
+
+  environment {
+    variables = {
+      apiKey = "${aws_secretsmanager_secret.riot-league-api-key.arn}"
+    }
+  }
 }
 
 resource "aws_sqs_queue" "player-update" {
