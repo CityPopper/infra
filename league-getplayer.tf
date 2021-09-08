@@ -35,7 +35,7 @@ resource "aws_lambda_function" "getLeaguePlayer" {
 
   environment {
     variables = {
-      apiKey = "${aws_secretsmanager_secret.riot-league-api-key.arn}"
+      RIOT_API_KEY = "${aws_secretsmanager_secret.riot-league-api-key.arn}"
     }
   }
 }
