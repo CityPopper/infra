@@ -1,48 +1,52 @@
-resource "aws_s3_bucket" "getLeaguePlayer" {
-  bucket = var.lambda_getleagueplayer_bucket
-  acl    = "private"
-  versioning {
-    enabled = true
-  }
-  tags   = {
-    Name = "getLeaguePlayer"
-  }
-}
-
-resource "aws_s3_bucket_object" "getLeaguePlayer_lambda_src" {
-    bucket = "${aws_s3_bucket.getLeaguePlayer.id}"
-    acl    = "private"
-    key    = "lambda.zip"
-    source = "tmp/lambda.zip"
-    lifecycle {
-      ignore_changes = [
-        key,
-        tags,
-        tags_all
-      ]
-    }
-}
-
 resource "aws_lambda_function" "getLeaguePlayer" {  
   function_name = "getLeaguePlayer"
 
-  s3_bucket = aws_s3_bucket.getLeaguePlayer.bucket
-  s3_key = aws_s3_bucket_object.getLeaguePlayer_lambda_src.key
+  filename = "tmp/python_lambda.zip"
 
   runtime = "python3.9"
   handler = "main.lambda_handler"
-  role    = aws_iam_role.lambda-riot-league-api-key-reader.arn
+  role    = aws_iam_role.lambda.arn
+  timeout = 5
 
-  environment {
-    variables = {
-      RIOT_API_KEY = "${aws_secretsmanager_secret.riot-league-api-key.arn}"
-    }
+  file_system_config {
+    arn = aws_efs_access_point.riot-api-key.arn
+    local_mount_path = "/mnt/secrets"
   }
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.player-data-lambdas.id]
+    security_group_ids = [
+                           aws_security_group.secrets-efs-egress.id,
+                           aws_security_group.getLeaguePlayer.id
+                         ]
+  }
+
+  depends_on = [
+    aws_efs_mount_target.secrets
+  ]
+}
+
+resource "aws_security_group" "getLeaguePlayer" {
+  name        = "getLeaguePlayer"
+  description = "SG for getLeaguePlayer"
+  vpc_id      = aws_vpc.get-players.id
+
+  egress = [
+    {
+      security_groups = null
+      cidr_blocks = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      description =  "HTTPS"
+      protocol = "tcp"
+      from_port = 443
+      to_port = 443
+      prefix_list_ids = null
+      self = null
+    }
+  ]
 }
 
 resource "aws_sqs_queue" "player-update" {
-  name                        = "player-update.fifo"
-  fifo_queue                  = true
-  content_based_deduplication = true
+  name                        = "player-update"
   tags                        = {}
 }

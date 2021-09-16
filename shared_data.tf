@@ -1,11 +1,11 @@
 
 # This is used to create empty lambdas which can have their own deployment pipeline
-data "archive_file" "lambda_null_zip" {
+data "archive_file" "python-lambda-null-zip" {
   type = "zip"
-  output_path = "tmp/${path.module}/lambda.zip"
+  output_path = "tmp/${path.module}/python_lambda.zip"
 
   source {
-    filename = "null"
-    content = "null"
+    filename = "main.py"
+    content = "def lambda_handler(event, context):\n  return 'dank'"
   }
 }
