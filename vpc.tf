@@ -9,8 +9,14 @@ resource "aws_vpc" "get-players" {
 
 
 resource "aws_default_security_group" "get-players" {
-  vpc_id = aws_vpc.get-players.id
+  vpc_id = "${aws_vpc.get-players.id}"
 }
 resource "aws_internet_gateway" "get-players" {
-  vpc_id = aws_vpc.get-players.id
+  vpc_id = "${aws_vpc.get-players.id}"
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = "${aws_vpc.get-players.id}"
+  service_name = "com.amazonaws.us-east-1.s3"
+  route_table_ids = ["${aws_vpc.get-players.main_route_table_id}"]
 }

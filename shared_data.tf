@@ -6,6 +6,6 @@ data "archive_file" "python-lambda-null-zip" {
 
   source {
     filename = "main.py"
-    content = "def lambda_handler(event, context):\n  return 'dank'"
+    content = "def lambda_handler(event, context):\n  return event"
   }
 }

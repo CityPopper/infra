@@ -9,18 +9,17 @@ data "aws_iam_policy" "AWSLambdaVPCAccessExecutionRole" {
 
 resource "aws_iam_role" "lambda" {
   name = "lambda"
+  assume_role_policy = data.aws_iam_policy_document.lambda-assume-role-policy.json
+}
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Sid    = ""
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      },
-    ]
-  })
+data "aws_iam_policy_document" "lambda-assume-role-policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect = "Allow"
+    sid    = ""
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
 }
