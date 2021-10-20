@@ -64,6 +64,11 @@ resource "aws_efs_access_point" "riot-api-key" {
 
   root_directory {
     path = "/secrets/riotapikey"
+      creation_info {
+        owner_gid   = 1000
+        owner_uid   = 1000
+        permissions = 700
+     }
   }
 
   posix_user {
@@ -91,9 +96,17 @@ resource "aws_security_group" "secrets-efs-egress" {
       protocol = "tcp"
       from_port = 2049
       to_port = 2049
-      prefix_list_ids = []
-      self = null
-    }, {
+      prefix_list_ids = ["${aws_vpc_endpoint.s3.prefix_list_id}"]
+      self = false
+    }
+  ]
+}
+
+resource "aws_security_group" "s3-egress" {
+  name        = "s3-egress"
+  description = "SG For allowing traffic to S3"
+  vpc_id      = "${aws_vpc.get-players.id}"
+  egress = [{
       security_groups = ["${aws_security_group.secrets-efs.id}"]
       cidr_blocks = []
       ipv6_cidr_blocks = []
@@ -102,7 +115,7 @@ resource "aws_security_group" "secrets-efs-egress" {
       from_port = 443
       to_port = 443
       prefix_list_ids = ["${aws_vpc_endpoint.s3.prefix_list_id}"]
-      self = null
+      self = false
     }
   ]
 }
@@ -122,7 +135,7 @@ resource "aws_security_group_rule" "secrets-efs-ingress" {
   source_security_group_id = "${aws_security_group.secrets-efs-egress.id}"
 }
 
-resource "aws_lambda_function" "syncEFSSecrets" {  
+resource "aws_lambda_function" "syncEFSSecrets" {
   function_name = "syncEFSSecrets"
 
   filename = "tmp/python_lambda.zip"
@@ -139,12 +152,16 @@ resource "aws_lambda_function" "syncEFSSecrets" {
 
   vpc_config {
     subnet_ids         = ["${aws_subnet.player-data-lambdas.id}"]
-    security_group_ids = ["${aws_security_group.secrets-efs-egress.id}"]
+    security_group_ids = [
+                          "${aws_security_group.secrets-efs-egress.id}",
+                          "${aws_security_group.s3-egress.id}"
+                         ]
   }
 
   depends_on = [
     aws_efs_mount_target.secrets,
-    aws_iam_role_policy_attachment.syncEFS-allowsecrets
+    aws_iam_role_policy_attachment.syncEFS-allowsecrets,
+    aws_vpc_endpoint.s3
   ]
 }
 
@@ -167,7 +184,6 @@ resource "aws_s3_bucket_notification" "efs-sync-notification" {
                             "s3:ObjectRestore:*"
                             ]
   }
-  depends_on = [aws_lambda_permission.syncEFSSecrets]
 }
 
 resource "aws_iam_role" "syncEFSSecrets" {
@@ -198,17 +214,8 @@ resource "aws_iam_policy" "syncEFSSecrets" {
           "s3:*",
         ]
         Effect   = "Allow"
-        Resource = "*"
+        Resource = "*" #TODO: This is too broad
       }
     ]
   })
 }
-
-
-
-
-/*
-TODO:
-1. VPC Endpoint Gateway for S3
-2. secret-efs-egress outbound
-*/
