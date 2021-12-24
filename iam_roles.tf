@@ -23,3 +23,15 @@ data "aws_iam_policy_document" "lambda-assume-role-policy" {
     }
   }
 }
+
+data "aws_iam_policy_document" "datasync-assume-role-policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect = "Allow"
+    sid    = ""
+    principals {
+      type        = "Service"
+      identifiers = ["datasync.amazonaws.com"]
+    }
+  }
+}
